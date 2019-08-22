@@ -51,10 +51,10 @@ void Display::set_info(const String& line3)
 void Display::update()
 {
     m_display->clearBuffer();
-    m_display->drawStr(0, 0, m_machine_id.c_str());
-    m_display->drawStr(0, Y_1, m_network_status.c_str());
-    m_display->drawStr(0, Y_2, m_line1.c_str());
-    m_display->drawStr(0, Y_3, m_line2.c_str());
-    m_display->drawStr(0, Y_4, m_line3.c_str());
+    m_display->drawUTF8(0, 0, m_machine_id.c_str());
+    m_display->drawUTF8(0, Y_1, m_network_status.c_str());
+    m_display->drawUTF8(0, Y_2, m_line1.c_str());
+    m_display->drawUTF8(0, Y_3, m_line2.c_str());
+    m_display->drawUTF8(0, Y_4, m_line3.c_str());
     m_display->sendBuffer();
 }
