@@ -15,20 +15,21 @@ void WiFiHandler::init(AbstractLed& led,
     led.set_duty_cycle(10);
     led.set_period(1);
 
+    const auto ssid = Eeprom::get_ssid();
+
     WiFi.mode(WIFI_STA);
-    int index = 0;
-    while (1)
+    int tries = 0;
+    while (ssid.length() != 0 && tries < 5)
     {
         led.update();
         Serial.println();
         Serial.println();
-        const auto ssid = Eeprom::get_ssid(index);
         String s = "Trying ";
         s += ssid;
         disp.set_network_status(s.c_str());
         Serial.println(s);
 
-        WiFi.begin(ssid, Eeprom::get_password(index));
+        WiFi.begin(ssid, Eeprom::get_password());
         led.update();
 
         int i = 0;
@@ -57,9 +58,7 @@ void WiFiHandler::init(AbstractLed& led,
             break;
         }
         Serial.println("");
-        ++index;
-        if (index >= Eeprom::get_nof_ssids())
-            index = 0;
+        ++tries;
     }
 
     led.update();
