@@ -9,7 +9,7 @@ public:
 
     void set_param(const char* name, const String& value);
 
-    int post(const JsonObject& obj);
+    int post(const DynamicJsonDocument& obj);
 
     String get_response() const;
 

@@ -10,10 +10,10 @@ AcsRestClient::AcsRestClient(const char* p)
 {
 }
 
-int AcsRestClient::post(const JsonObject& obj)
+int AcsRestClient::post(const DynamicJsonDocument& doc)
 {
     String s;
-    obj.printTo(s);
+    serializeJson(doc, s);
     // Work around RestClient bug
     s = String("\r\n") + s;
     RestClient client(SERVER, USE_SSL ? 443 : 80, USE_SSL);

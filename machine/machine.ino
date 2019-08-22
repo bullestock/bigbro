@@ -20,7 +20,7 @@ extern "C" {
 #include "led.h"
 #include "wifi.h"
 
-const char* VERSION = "0.1.2";
+const char* VERSION = "0.2.0";
 
 // TX is not connected
 #define PIN_TX       11
@@ -88,7 +88,7 @@ void setup()
     pinMode(PIN_RELAY, OUTPUT);
 
     // We need room for machine name (not more than 20 bytes) and API token (64 bytes)
-    EEPROM.begin(128);
+    Eeprom::init();
 
     display.set_machine_id(Eeprom::get_machine_id().c_str());
     String s = "Version ";
@@ -110,11 +110,30 @@ void decode_line(const char* line)
     {
     case 'h':
         Serial.println("Commands:");
+        Serial.println("  s  Set SSID");
+        Serial.println("  p  Set password");
         Serial.println("  k  Set API token");
         Serial.println("  m  Set machine ID");
         Serial.println("  t  Send test request");
+        Serial.println("  x  Erase EEPROM");
         break;
         
+    case 's':
+        // Set SSID
+        while (line[++i] == ' ')
+            ;
+        Eeprom::set_ssid(line+i);
+        Serial.println("SSID set");
+        return;
+
+    case 'p':
+        // Set password
+        while (line[++i] == ' ')
+            ;
+        Eeprom::set_password(line+i);
+        Serial.println("Password set");
+        return;
+
     case 'k':
         // Set API token
         while (line[++i] == ' ')
@@ -151,6 +170,15 @@ void decode_line(const char* line)
         }
         break;
 
+    case 'x':
+        Eeprom::erase();
+        Serial.println("EEPROM erased");
+        break;
+        
+    case 'z':
+        Eeprom::dump();
+        break;
+        
     default:
         Serial.print("Unknown command: ");
         Serial.println(line);
@@ -169,11 +197,10 @@ bool query_permission(const String& card_id,
                       String& message)
 {
     AcsRestClient rc("permissions");
-    StaticJsonBuffer<200> jsonBuffer;
-    auto& root = jsonBuffer.createObject();
-    root["api_token"] = Eeprom::get_api_token();
-    root["card_id"] = card_id;
-    const auto status = rc.post(root);
+    DynamicJsonDocument doc(200);
+    doc["api_token"] = Eeprom::get_api_token();
+    doc["card_id"] = card_id;
+    const auto status = rc.post(doc);
     led.update();
     Serial.print("HTTP status ");
     Serial.println(status);
@@ -188,9 +215,9 @@ bool query_permission(const String& card_id,
         while ((resp[j] != '}') && (j < resp.length()))
             ++j;
         resp = resp.substring(i, j+1);
-        StaticJsonBuffer<200> jsonBuffer;
-        auto& json_resp = jsonBuffer.parseObject(resp);
-        if (!json_resp.success())
+        StaticJsonDocument<200> doc;
+        auto error = deserializeJson(doc, resp);
+        if (error)
         {
             Serial.println("Bad JSON:");
             Serial.println(resp);
@@ -198,9 +225,9 @@ bool query_permission(const String& card_id,
         }
         else
         {
-            allowed = json_resp["allowed"];
-            user_name = (const char*) json_resp["name"];
-            user_id = json_resp["id"];
+            allowed = doc["allowed"];
+            user_name = (const char*) doc["name"];
+            user_id = doc["id"];
         }
         return true;
     }
@@ -255,17 +282,16 @@ void loop()
                                allowed ? "OK" : "Denied");
 
             AcsRestClient logger("logs");
-            StaticJsonBuffer<200> jsonBuffer;
+            DynamicJsonDocument doc(200);
             yield();
-            auto& root = jsonBuffer.createObject();
-            root["api_token"] = Eeprom::get_api_token();
-            auto& log = root.createNestedObject("log");
+            doc["api_token"] = Eeprom::get_api_token();
+            auto log = doc.createNestedObject("log");
             log["user_id"] = user_id;
             if (allowed)
                 log["message"] = "Successful machine access";
             else
                 log["message"] = "Machine access denied";
-            const auto status = logger.post(root);
+            const auto status = logger.post(doc);
             yield();
             if (status != 200)
             {
